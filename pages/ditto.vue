@@ -7,10 +7,10 @@
 </template>
 
 <script lang="ts" setup>
-const { $axios } = useNuxtApp();
+const { $axios, $apiDomain } = useNuxtApp();
 const data = ref({});
 
 (async () => {
-  data.value = await $axios.$get('http://localhost:3000/api/v2/pokemon/ditto');
+  data.value = await $axios.$get(`${$apiDomain()}/api/v2/pokemon/ditto`);
 })();
 </script>
