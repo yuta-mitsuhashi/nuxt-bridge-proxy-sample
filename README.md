@@ -1,69 +1,75 @@
-# nuxt-bridge-proxy-sample
+# NuxtBridge Proxy Sample
 
-## Build Setup
+## 起動
 
-```bash
-# install dependencies
-$ npm install
+- Dockerビルド＆起動
 
-# serve with hot reload at localhost:3000
-$ npm run dev
-
-# build for production and launch server
-$ npm run build
-$ npm run start
-
-# generate static project
-$ npm run generate
+```
+docker build . -t nuxt-bridge-proxy-sample && docker run --rm -p 8080:3000 -e NUXT_PUBLIC_MY_DOMAIN='http://localhost:8080' nuxt-bridge-proxy-sample
 ```
 
-For detailed explanation on how things work, check out the [documentation](https://nuxtjs.org).
+- 画面表示 (テストの為、ポート番号を変更)
 
-## Special Directories
+```
+http://localhost:8080/
+```
 
-You can create the following extra directories, some of which have special behaviors. Only `pages` is required; you can delete them if you don't want to use their functionality.
+## Proxy設定
 
-### `assets`
+- `http-proxy-middleware` で Proxy を行う方針。
+- fromNodeMiddleware で取得できる middleware を使って適用する。
 
-The assets directory contains your uncompiled assets such as Stylus or Sass files, images, or fonts.
+```.ts
+// server-middleware/proxy.ts
 
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/assets).
+import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 
-### `components`
+// Proxy先はRuntimeConfigで設定変更できるよう考慮
+const { proxyTarget } = useRuntimeConfig();
 
-The components directory contains your Vue.js components. Components make up the different parts of your page and can be reused and imported into your pages, layouts and even other components.
+const proxyMiddleware = createProxyMiddleware({
+  target: proxyTarget,
+  changeOrigin: true,
+  ws: true,
+  pathRewrite: {
+    '^/api': '/',
+  },
+  pathFilter: ['/api/**'],
+  on: {
+    proxyReq: fixRequestBody,
+  },
+  logger: console,
+});
 
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/components).
+export default fromNodeMiddleware((req, res, next) => {
+  proxyMiddleware(req, res, next);
+});
+```
 
-### `layouts`
+## API呼び出し
 
-Layouts are a great help when you want to change the look and feel of your Nuxt app, whether you want to include a sidebar or have distinct layouts for mobile and desktop.
+- useFetch利用時、リクエスト先URLにFQDNを指定しないと、SSR時にエラーが発生する。(<a href="https://github.com/nuxt/nuxt/issues/12720">恐らく内部の不具合</a>)
+- その為、SSRでは内部ホスト `http://localhost:3000/*` に、CSR時はドメイン指定を省略 `/*` に、リクエスト先URLを変更する必要がある。
+- これを簡易にやる為、`plugins/apiDomain.ts` でリクエスト先のFQDNを取得する処理を用意している。
 
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/layouts).
+```.ts
+// plugins/apiDomain.ts
+export default defineNuxtPlugin((nuxtApp) => {
+  const config = useRuntimeConfig();
+  // CSR時にドメインを省略させて $axios.$get すると、何故かNuxtの自ホスト (localhost:3000) にリクエストしてしまう。
+  // その為、明示的にRuntimeConfigで公開時の自ドメインを明示的に設定する事にする。（ちょっと煩雑...）
+  nuxtApp.provide('apiDomain', () => nuxtApp.ssrContext ? 'http://localhost:3000' : config.public.myDomain);
+});
+```
 
+```.vue
+// pages/ditto.vue
+<script lang="ts" setup>
+const { $axios, $apiDomain } = useNuxtApp();
+const data = ref({});
 
-### `pages`
-
-This directory contains your application views and routes. Nuxt will read all the `*.vue` files inside this directory and setup Vue Router automatically.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/get-started/routing).
-
-### `plugins`
-
-The plugins directory contains JavaScript plugins that you want to run before instantiating the root Vue.js Application. This is the place to add Vue plugins and to inject functions or constants. Every time you need to use `Vue.use()`, you should create a file in `plugins/` and add its path to plugins in `nuxt.config.js`.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/plugins).
-
-### `static`
-
-This directory contains your static files. Each file inside this directory is mapped to `/`.
-
-Example: `/static/robots.txt` is mapped as `/robots.txt`.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/static).
-
-### `store`
-
-This directory contains your Vuex store files. Creating a file in this directory automatically activates Vuex.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/store).
+(async () => {
+  data.value = await $axios.$get(`${$apiDomain()}/api/v2/pokemon/ditto`);
+})();
+</script>
+```
