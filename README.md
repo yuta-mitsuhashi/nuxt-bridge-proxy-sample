@@ -1,4 +1,4 @@
-# mock-nuxt-bridge
+# nuxt-bridge-proxy-sample
 
 ## Build Setup
 

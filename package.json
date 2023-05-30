@@ -1,5 +1,5 @@
 {
-  "name": "mock-nuxt-bridge",
+  "name": "nuxt-bridge-proxy-sample",
   "version": "1.0.0",
   "private": true,
   "scripts": {

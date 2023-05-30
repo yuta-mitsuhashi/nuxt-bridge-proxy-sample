@@ -3,7 +3,7 @@ import { defineNuxtConfig } from '@nuxt/bridge';
 export default defineNuxtConfig({
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
-    title: 'mock-nuxt-bridge',
+    title: 'nuxt-bridge-proxy-sample',
     htmlAttrs: {
       lang: 'en'
     },
