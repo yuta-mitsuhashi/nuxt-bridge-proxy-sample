@@ -35,5 +35,8 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     proxyTarget: 'https://pokeapi.co/api/',
+    public: {
+      myDomain: '',
+    }
   },
 });
