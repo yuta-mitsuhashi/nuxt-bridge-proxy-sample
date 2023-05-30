@@ -30,7 +30,7 @@ export default defineNuxtConfig({
   ],
 
   serverMiddleware: [
-    { path: '/api/**', handler: '~/server-middleware/proxy.ts' }
+    { path: '/api/**', handler: '~/server-middleware/proxy' }
   ],
 
   runtimeConfig: {
